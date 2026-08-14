@@ -76,6 +76,23 @@ fitur_cols = [col for col in df.columns if col.upper() not in non_fitur_cols]
 for col in fitur_cols:
     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
 
+# Filter Tahun Dataset jika terdapat lebih dari 1 tahun di hasil clustering
+if "TAHUN" in df.columns and df["TAHUN"].dropna().any():
+    daftar_tahun_hasil = sorted(df["TAHUN"].dropna().unique().tolist(), reverse=True)
+    if len(daftar_tahun_hasil) > 1:
+        col_t1, _ = st.columns([1, 3])
+        with col_t1:
+            opsi_t = ["Semua Tahun"] + [str(int(t)) for t in daftar_tahun_hasil]
+            def_idx = 0
+            if "selected_tahun" in st.session_state and st.session_state["selected_tahun"] is not None:
+                t_str = str(int(st.session_state["selected_tahun"]))
+                if t_str in opsi_t:
+                    def_idx = opsi_t.index(t_str)
+            t_pilih = st.selectbox("📅 Filter Tahun Hasil Clustering:", options=opsi_t, index=def_idx, key="filter_tahun_hasil")
+            
+        if t_pilih != "Semua Tahun":
+            df = df[df["TAHUN"] == int(t_pilih)].copy()
+
 # -----------------------------------------------------------------------------
 # LOGIKA PEMETAAN CLUSTER (0: Tinggi, 1: Sedang, 2: Rendah, -1: Noise)
 # -----------------------------------------------------------------------------

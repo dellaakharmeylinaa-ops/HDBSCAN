@@ -29,6 +29,12 @@ if not data or len(data) == 0:
 df = pd.DataFrame(data)
 df.columns = [col.upper() for col in df.columns]
 
+# Saring data preprocessing sesuai tahun yang dipilih jika ada
+if "selected_tahun" in st.session_state and st.session_state["selected_tahun"] is not None and "TAHUN" in df.columns:
+    df_selected_year = df[df["TAHUN"] == st.session_state["selected_tahun"]].copy()
+    if len(df_selected_year) > 0:
+        df = df_selected_year
+
 # Deteksi Fitur Seleksi Secara Dinamis (Mengabaikan kolom identitas)
 identitas_cols = ['id', 'TAHUN', 'KECAMATAN', 'created_at', 'updated_at']
 fitur_cols = [col for col in df.columns if col.lower() not in [c.lower() for c in identitas_cols]]

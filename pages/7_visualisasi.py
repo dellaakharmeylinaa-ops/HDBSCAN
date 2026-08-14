@@ -35,6 +35,23 @@ fitur_cols = [c for c in df.columns if c.upper() not in non_fitur_cols]
 for col in fitur_cols:
     df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
 
+# Filter Tahun Dataset jika terdapat lebih dari 1 tahun di hasil clustering
+if "TAHUN" in df.columns and df["TAHUN"].dropna().any():
+    daftar_tahun_vis = sorted(df["TAHUN"].dropna().unique().tolist(), reverse=True)
+    if len(daftar_tahun_vis) > 1:
+        col_t1, _ = st.columns([1, 3])
+        with col_t1:
+            opsi_t = ["Semua Tahun"] + [str(int(t)) for t in daftar_tahun_vis]
+            def_idx = 0
+            if "selected_tahun" in st.session_state and st.session_state["selected_tahun"] is not None:
+                t_str = str(int(st.session_state["selected_tahun"]))
+                if t_str in opsi_t:
+                    def_idx = opsi_t.index(t_str)
+            t_pilih = st.selectbox("📅 Filter Tahun Visualisasi:", options=opsi_t, index=def_idx, key="filter_tahun_vis")
+            
+        if t_pilih != "Semua Tahun":
+            df = df[df["TAHUN"] == int(t_pilih)].copy()
+
 # 2. Logika pemetaan klaster (Konsisten: 3 Klaster + Noise)
 df_valid = df[df["CLUSTER"] != -1].copy()
 

@@ -91,16 +91,13 @@ def total_dataset():
     return total
 
 # --- PREPROCESSING ---
-# Menyimpan hasil preprocessing ke database
+# Menyimpan hasil preprocessing ke database (Per Tahun, Tidak Menimpa Tahun Lain)
 def save_preprocessing(df):
     try:
         conn = get_connection()
         cursor = conn.cursor()
         
-        # 1. Bersihkan tabel lama
-        cursor.execute("TRUNCATE TABLE preprocessing")
-        
-        # 2. Buat copy DataFrame & bersihkan nama kolom dari akhiran _ZSCORE / _zscore
+        # 1. Buat copy DataFrame & bersihkan nama kolom dari akhiran _ZSCORE / _zscore
         df_save = df.copy()
         df_save.columns = [
             str(col).replace('_ZSCORE', '').replace('_zscore', '').strip().replace(' ', '_') 
@@ -109,12 +106,23 @@ def save_preprocessing(df):
         
         cols = list(df_save.columns)
         
-        # Buat query INSERT secara dinamis berdasarkan nama kolom yang sudah bersih
+        # 2. Hapus HANYA data tahun yang sedang diproses agar tidak menimpa tahun lain
+        cols_upper = [c.upper() for c in cols]
+        if 'TAHUN' in cols_upper:
+            idx_tahun = cols_upper.index('TAHUN')
+            nama_col_tahun = cols[idx_tahun]
+            list_tahun = df_save[nama_col_tahun].dropna().unique().tolist()
+            for t in list_tahun:
+                cursor.execute("DELETE FROM preprocessing WHERE LOWER(tahun) = %s", (str(int(t)),))
+        else:
+            cursor.execute("TRUNCATE TABLE preprocessing")
+        
+        # 3. Buat query INSERT secara dinamis berdasarkan nama kolom yang sudah bersih
         columns_str = ", ".join([f"`{c.lower()}`" for c in cols])
         placeholders = ", ".join(["%s"] * len(cols))
         query = f"INSERT INTO preprocessing ({columns_str}) VALUES ({placeholders})"
         
-        # 3. Iterasi setiap baris dan simpan ke database
+        # 4. Iterasi setiap baris dan simpan ke database
         for _, row in df_save.iterrows():
             row_values = []
             for col in cols:
@@ -166,18 +174,14 @@ def delete_preprocessing():
     conn.close()
     return True
 
-#CLUSTERING HDBSCAN
-#menyimpan hasil 
+# CLUSTERING HDBSCAN
+# Menyimpan hasil clustering ke database (Per Tahun, Tidak Menimpa Tahun Lain)
 def save_hasil_clustering(df_hasil):
     try:
         conn = get_connection()
         cursor = conn.cursor()
         
-        # 1. Bersihkan tabel hasil lama
-        cursor.execute("TRUNCATE TABLE hasil_clustering")
-        
-        # 2. Buat copy DataFrame & bersihkan nama kolom
-        # (Hapus _ZSCORE, hapus spasi berlebih, ubah ke lowercase)
+        # 1. Buat copy DataFrame & bersihkan nama kolom
         df_save = df_hasil.copy()
         df_save.columns = [
             str(col).replace('_ZSCORE', '').replace('_zscore', '').strip().lower() 
@@ -186,12 +190,20 @@ def save_hasil_clustering(df_hasil):
         
         cols = list(df_save.columns)
         
-        # Buat query SQL dinamis
+        # 2. Hapus HANYA hasil tahun yang sedang diproses agar data tahun lain tetap tersimpan
+        if 'tahun' in cols:
+            list_tahun = df_save['tahun'].dropna().unique().tolist()
+            for t in list_tahun:
+                cursor.execute("DELETE FROM hasil_clustering WHERE tahun = %s", (int(t),))
+        else:
+            cursor.execute("TRUNCATE TABLE hasil_clustering")
+        
+        # 3. Buat query SQL dinamis
         columns_str = ", ".join([f"`{c}`" for c in cols])
         placeholders = ", ".join(["%s"] * len(cols))
         query = f"INSERT INTO hasil_clustering ({columns_str}) VALUES ({placeholders})"
         
-        # 3. Iterasi baris dan konversi tipe data numpy ke Python native
+        # 4. Iterasi baris dan konversi tipe data numpy ke Python native
         for _, row in df_save.iterrows():
             row_values = []
             for col in cols:
@@ -215,9 +227,9 @@ def save_hasil_clustering(df_hasil):
         
     except Exception as e:
         print(f"Error saving hasil clustering: {e}")
-        return False, str(e) # Mengembalikan detail pesan error
+        return False, str(e)
 
-#menampilkan hasil clustering
+# Menampilkan hasil clustering
 def get_hasil_clustering():
     conn = get_connection()
     if conn is None:
@@ -235,7 +247,7 @@ def get_hasil_clustering():
     conn.close()
     return data
 
-#hapus hasil clustering
+# Hapus hasil clustering
 def delete_hasil_clustering():
     conn = get_connection()
     cursor = conn.cursor()

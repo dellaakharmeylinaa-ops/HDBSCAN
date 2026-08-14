@@ -72,68 +72,7 @@ for col in komoditas_cols + zscore_cols:
     df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
 
 # -----------------------------------------------------------------------------
-# 2. LOGIKA PEMETAAN KATEGORI CLUSTER (Tinggi, Sedang, Rendah, Noise)
-# -----------------------------------------------------------------------------
-df_valid = df[df["CLUSTER"] != -1].copy()
-
-if len(df_valid) > 0:
-    # Urutkan klaster berdasarkan rata-rata produktivitas komoditas secara descending
-    if komoditas_cols:
-        cluster_means = df_valid.groupby("CLUSTER")[komoditas_cols].mean().mean(axis=1).sort_values(ascending=False)
-    elif "PRODUKTIVITAS" in df_valid.columns:
-        cluster_means = df_valid.groupby("CLUSTER")["PRODUKTIVITAS"].mean().sort_values(ascending=False)
-    else:
-        cluster_means = df_valid.groupby("CLUSTER").size().sort_values(ascending=False)
-
-    n_klaster_found = len(cluster_means)
-    
-    orig_to_new = {}
-    orig_to_kategori = {}
-
-    for idx, orig_id in enumerate(cluster_means.index):
-        if n_klaster_found >= 3:
-            if idx == 0:
-                new_id = 0
-                kat = "Cluster 0 (Tinggi)"
-            elif idx == n_klaster_found - 1:
-                new_id = 2
-                kat = "Cluster 2 (Rendah)"
-            else:
-                new_id = 1
-                kat = f"Cluster {idx} (Sedang)"
-        elif n_klaster_found == 2:
-            if idx == 0:
-                new_id = 0
-                kat = "Cluster 0 (Tinggi)"
-            else:
-                new_id = 2
-                kat = "Cluster 2 (Rendah)"
-        else:
-            new_id = 1
-            kat = "Cluster 1 (Sedang)"
-
-        orig_to_new[orig_id] = new_id
-        orig_to_kategori[orig_id] = kat
-
-    orig_to_new[-1] = -1
-    orig_to_kategori[-1] = "Noise (-1)"
-
-    df["CLUSTER_FINAL"] = df["CLUSTER"].map(orig_to_new).fillna(-1).astype(int)
-    df["KATEGORI"] = df["CLUSTER"].map(orig_to_kategori).fillna("Noise (-1)")
-else:
-    df["CLUSTER_FINAL"] = -1
-    df["KATEGORI"] = "Noise (-1)"
-
-color_discrete_map = {
-    "Cluster 0 (Tinggi)": "#2CA02C",  # Hijau
-    "Cluster 1 (Sedang)": "#1F77B4",  # Biru
-    "Cluster 2 (Rendah)": "#FFBB11",  # Kuning/Oren
-    "Noise (-1)": "#D62728"           # Merah
-}
-category_orders = ["Cluster 0 (Tinggi)", "Cluster 1 (Sedang)", "Cluster 2 (Rendah)", "Noise (-1)"]
-
-# -----------------------------------------------------------------------------
-# 3. FILTER TAHUN DATASET & METRIK RINGKASAN (KPI METRICS)
+# 2. FILTER TAHUN DATASET & METRIK RINGKASAN (KPI METRICS)
 # -----------------------------------------------------------------------------
 # Cek ketersediaan tahun pada data
 if "TAHUN" in df.columns and df["TAHUN"].dropna().any():
@@ -164,6 +103,67 @@ else:
     df_view = df.copy()
     df_raw_view = df_raw.copy()
     label_tahun = "Tahun -"
+
+# -----------------------------------------------------------------------------
+# 3. LOGIKA PEMETAAN KATEGORI CLUSTER (Tinggi, Sedang, Rendah, Noise) PER TAHUN AKTIF
+# -----------------------------------------------------------------------------
+df_valid = df_view[df_view["CLUSTER"] != -1].copy()
+
+if len(df_valid) > 0:
+    # Urutkan klaster berdasarkan rata-rata produktivitas komoditas secara descending pada tahun aktif
+    if komoditas_cols:
+        cluster_means = df_valid.groupby("CLUSTER")[komoditas_cols].mean().mean(axis=1).sort_values(ascending=False)
+    elif "PRODUKTIVITAS" in df_valid.columns:
+        cluster_means = df_valid.groupby("CLUSTER")["PRODUKTIVITAS"].mean().sort_values(ascending=False)
+    else:
+        cluster_means = df_valid.groupby("CLUSTER").size().sort_values(ascending=False)
+
+    n_klaster_found = len(cluster_means)
+    
+    orig_to_new = {}
+    orig_to_kategori = {}
+
+    for idx, orig_id in enumerate(cluster_means.index):
+        if n_klaster_found >= 3:
+            if idx == 0:
+                new_id = 0
+                kat = "Cluster 0 (Tinggi)"
+            elif idx == n_klaster_found - 1:
+                new_id = 2
+                kat = "Cluster 2 (Rendah)"
+            else:
+                new_id = 1
+                kat = "Cluster 1 (Sedang)"
+        elif n_klaster_found == 2:
+            if idx == 0:
+                new_id = 0
+                kat = "Cluster 0 (Tinggi)"
+            else:
+                new_id = 2
+                kat = "Cluster 2 (Rendah)"
+        else:
+            new_id = 1
+            kat = "Cluster 1 (Sedang)"
+
+        orig_to_new[orig_id] = new_id
+        orig_to_kategori[orig_id] = kat
+
+    orig_to_new[-1] = -1
+    orig_to_kategori[-1] = "Noise (-1)"
+
+    df_view["CLUSTER_FINAL"] = df_view["CLUSTER"].map(orig_to_new).fillna(-1).astype(int)
+    df_view["KATEGORI"] = df_view["CLUSTER"].map(orig_to_kategori).fillna("Noise (-1)")
+else:
+    df_view["CLUSTER_FINAL"] = -1
+    df_view["KATEGORI"] = "Noise (-1)"
+
+color_discrete_map = {
+    "Cluster 0 (Tinggi)": "#2CA02C",  # Hijau
+    "Cluster 1 (Sedang)": "#1F77B4",  # Biru
+    "Cluster 2 (Rendah)": "#FFBB11",  # Kuning/Oren
+    "Noise (-1)": "#D62728"           # Merah
+}
+category_orders = ["Cluster 0 (Tinggi)", "Cluster 1 (Sedang)", "Cluster 2 (Rendah)", "Noise (-1)"]
 
 # Hitung Metrik Berdasarkan Data Tampilan (df_view / df_raw_view)
 m1, m2, m3, m4 = st.columns(4)
@@ -229,26 +229,52 @@ with col_graph1:
 # KANAN: Peta / Scatter Sebaran Cluster
 with col_graph2:
     st.markdown(f"### Sebaran Cluster Kecamatan ({label_tahun})")
-    if "LATITUDE" in df_view.columns and "LONGITUDE" in df_view.columns:
+    
+    # Hitung jumlah anggota data per kelompok klaster untuk label
+    counts_klaster = df_view["KATEGORI"].value_counts().to_dict()
+    df_scatter = df_view.copy()
+    df_scatter["LABEL_KLASTER"] = df_scatter["KATEGORI"].apply(
+        lambda k: f"{k} ({counts_klaster.get(k, 0)} Data)"
+    )
+
+    # Buat mapping warna dan urutan kategori dengan jumlah data
+    color_map_with_counts = {}
+    category_orders_with_counts = []
+    
+    for kat in category_orders:
+        if kat in counts_klaster:
+            label_kat = f"{kat} ({counts_klaster[kat]} Data)"
+            color_map_with_counts[label_kat] = color_discrete_map.get(kat, "#7F7F7F")
+            category_orders_with_counts.append(label_kat)
+
+    if "LATITUDE" in df_scatter.columns and "LONGITUDE" in df_scatter.columns:
         fig_map = px.scatter_mapbox(
-            df_view, lat="LATITUDE", lon="LONGITUDE", color="KATEGORI",
-            color_discrete_map=color_discrete_map, hover_name="KECAMATAN",
-            zoom=9, height=400, category_orders={"KATEGORI": category_orders}
+            df_scatter, lat="LATITUDE", lon="LONGITUDE", color="LABEL_KLASTER",
+            color_discrete_map=color_map_with_counts, hover_name="KECAMATAN",
+            zoom=9, height=400, category_orders={"LABEL_KLASTER": category_orders_with_counts}
         )
         fig_map.update_layout(mapbox_style="open-street-map", margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig_map, use_container_width=True)
     else:
-        # Scatter Sebaran Cluster per Kecamatan
+        # Scatter Sebaran Cluster per Kecamatan dengan Jumlah Data
         fig_scatter_spatial = px.scatter(
-            df_view, x="KECAMATAN", y="KATEGORI", color="KATEGORI",
-            color_discrete_map=color_discrete_map,
-            category_orders={"KATEGORI": category_orders},
-            title=f"Sebaran Cluster per Kecamatan ({label_tahun})"
+            df_scatter, 
+            x="KECAMATAN", 
+            y="LABEL_KLASTER", 
+            color="LABEL_KLASTER",
+            color_discrete_map=color_map_with_counts,
+            category_orders={"LABEL_KLASTER": category_orders_with_counts},
+            title=f"Sebaran Cluster per Kecamatan ({label_tahun})",
+            labels={
+                "LABEL_KLASTER": "Kelompok Klaster",
+                "KECAMATAN": "Kecamatan"
+            }
         )
+        fig_scatter_spatial.update_traces(marker=dict(size=11))
         fig_scatter_spatial.update_layout(
             height=400, 
             margin=dict(l=10, r=10, t=20, b=10),
-            yaxis_title="Kategori Klaster",
+            yaxis_title="",
             xaxis_title="Kecamatan"
         )
         st.plotly_chart(fig_scatter_spatial, width="stretch", config={'displayModeBar': False})

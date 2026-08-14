@@ -173,7 +173,6 @@ if btn_simpan:
         for col in komoditas_cols:
             df_final_preprocessed[col] = df_final_preprocessed[col].astype(float)
         
-        delete_preprocessing()
         berhasil = save_preprocessing(df_final_preprocessed)
 
     if berhasil:

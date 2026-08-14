@@ -167,17 +167,25 @@ category_orders = ["Cluster 0 (Tinggi)", "Cluster 1 (Sedang)", "Cluster 2 (Renda
 
 # Hitung Metrik Berdasarkan Data Tampilan (df_view / df_raw_view)
 m1, m2, m3, m4 = st.columns(4)
-total_kecamatan = df_view["KECAMATAN"].nunique() if "KECAMATAN" in df_view.columns else len(df_view)
 
-# Hitung Komoditas & Produktivitas Asli dari Raw Data
+# Hitung jumlah tahun yang aktif
+n_tahun_aktif = df_view["TAHUN"].nunique() if "TAHUN" in df_view.columns and df_view["TAHUN"].dropna().any() else 1
+
+if tahun_terpilih == "Semua Tahun" and n_tahun_aktif > 1:
+    # Akumulasi total data kecamatan dari seluruh tahun (misal 31 x 2 = 62 Kecamatan)
+    total_kecamatan = len(df_view)
+    total_komoditas = len(komoditas_cols) * n_tahun_aktif
+else:
+    # Per tahun tunggal (31 Kecamatan, 8 Komoditas)
+    total_kecamatan = df_view["KECAMATAN"].nunique() if "KECAMATAN" in df_view.columns else len(df_view)
+    total_komoditas = len(komoditas_cols)
+
+# Hitung Rata-rata Produktivitas Asli dari Raw Data
 if not df_raw_view.empty and "PRODUKTIVITAS" in df_raw_view.columns:
-    total_komoditas = df_raw_view["KOMODITAS"].nunique() if "KOMODITAS" in df_raw_view.columns else len(komoditas_cols)
     avg_prod = df_raw_view["PRODUKTIVITAS"].mean()
 elif komoditas_cols:
-    total_komoditas = len(komoditas_cols)
     avg_prod = df_view[komoditas_cols].values.mean()
 else:
-    total_komoditas = 0
     avg_prod = 0.0
 
 m1.metric("Periode Dataset", f"{label_tahun}")

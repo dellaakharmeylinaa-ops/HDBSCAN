@@ -372,7 +372,7 @@ st.markdown("---")
 # -----------------------------------------------------------------------------
 # 7. VISUALISASI PER KECAMATAN
 # -----------------------------------------------------------------------------
-st.subheader("Visualisasi Detail Per Kecamatan", anchor=False)
+st.subheader("Detail Per Kecamatan", anchor=False)
 
 if "KECAMATAN" in df.columns and df["KECAMATAN"].dropna().any():
     daftar_kecamatan = sorted(df["KECAMATAN"].dropna().unique())
